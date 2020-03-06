@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>file-sharing download</title>
+  <style>
+    body {
+      font-family: "Helvetica Neue", helvetica, arial;
+      padding: 15px;
+    }
+
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    ul li {
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <h1>download</h1>
+  <p id="token"></p>
+  <button id="download">download file</button>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/qs/6.9.1/qs.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+  <script>
+    var queryString = Qs.parse(location.search, { ignoreQueryPrefix: true });
+
+    function downloadImage(img, fileName) {
+      var imgData = atob(img.split(",")[1]),
+        len = imgData.length,
+        buf = new ArrayBuffer(len),
+        view = new Uint8Array(buf),
+        blob,
+        i
+
+      for (i = 0; i < len; i++) {
+        view[i] = imgData.charCodeAt(i) & 0xff // masking
+      }
+
+      blob = new Blob([view], {
+        type: "application/octet-stream"
+      })
+
+      if (window.navigator.msSaveOrOpenBlob) {
+        window.navigator.msSaveOrOpenBlob(blob, fileName)
+      } else {
+        //var url = URL.createObjectURL(blob);
+        var a = document.createElement("a")
+        a.style = "display: none"
+        //a.href = url;
+        a.href = img;
+        a.download = fileName
+        document.body.appendChild(a)
+        a.click()
+
+        setTimeout(function() {
+          document.body.removeChild(a)
+          //URL.revokeObjectURL(url);
+        }, 100)
+      }
+    }
+
+    if (!queryString.token) {
+      alert('token not defined');
+      location.replace('/');
+    } else {
+      var role = 'downloader';
+      var token = queryString.token;
+      var query = { token, role };
+      var socket = io('http://localhost:5000', { path: '/test', query });
+      var el;
+
+      document.querySelector('#token').innerHTML = token;
+  
+      socket.on('onlineUsers', function(users) {
+        console.log('onlineUsers', users);
+      });
+
+      socket.on('status', function(payload) {
+        console.log('status', payload);
+        // socket.emit('action', {
+        //   type: 'getSharingFile',
+        //   role: 'downloader'
+        // });
+      });
+
+      socket.on('recevieDownload', function(payload) {
+        console.log('recevieDownload', payload);
+      });
+
+      socket.on('sendSharingFile', function(payload) {
+        const { name, base64 } = payload;
+        const mimeType = base64.match(/[^:/]\w+(?=;|,)/)[0];
+        downloadImage(base64, `${name}.${mimeType}`);
+      });
+  
+      socket.on('token', (socket) => {
+        // let token = socket.handshake.query.token;
+        console.log('connection socket', socket);
+      });
+
+      document.querySelector('#download').addEventListener('click', function() {
+        socket.emit('action', {
+          type: 'getSharingFile',
+          role: 'downloader'
+        });
+      });
+  
+      // socket.on('time', function(timeString) {
+      //   var li = document.createElement('li');
+      //   li.innerHTML = timeString;
+      //   document.querySelector('#pings').appendChild(li);
+      // });
+    }
+  </script>
+</body>
+</html>
