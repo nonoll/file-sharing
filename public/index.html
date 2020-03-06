@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>file-sharing provider</title>
+  <style>
+    body {
+      font-family: "Helvetica Neue", helvetica, arial;
+      padding: 15px;
+    }
+
+    ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    ul li {
+      line-height: 1.4;
+    }
+  </style>
+</head>
+<body>
+  <h1>Provider</h1>
+  <div id="before">
+    <input id="file" type="file" accept="images/*" />
+    <img id="imgPreview" style="display:none" src="#none" />
+    <button id="start">start sharing</button>
+  </div>
+  <div id="after" style="display:none">
+    <button class="btn">Copy to download uri</button>
+    <p id="status"></p>
+    <ul id="pings"></ul>
+  </div>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/node-uuid/1.4.8/uuid.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.4/clipboard.min.js"></script>
+  <script>
+    function startSharing() {
+      var role = 'provider';
+      var token = uuid();
+      var query = { token, role };
+      const { protocol, host } = location;
+      var socket = io(`${protocol}//${host}`, { path: '/file-share', query });
+      var el;
+
+      new ClipboardJS('.btn', {
+        text: function(trigger) {
+          const { protocol, host } = location;
+          return `${protocol}//${host}/download.html?token=${token}`;
+        },
+        action: function() {
+          // console.log('action', arguments);
+          alert('복사 되었습니다.');
+        }
+      });
+
+      socket.on('onlineUsers', function(users) {
+        console.log('onlineUsers', users);
+      });
+
+      socket.on('token', (socket) => {
+        // let token = socket.handshake.query.token;
+        console.log('connection socket', socket);
+      });
+
+      socket.on('getSharingFile', function(payload) {
+        console.log('getSharingFile', payload);
+        socket.emit('action', {
+          type: 'sendSharingFile',
+          role,
+          data: {
+            name: shareFileName,
+            base64: shareFileData
+          }
+        });
+        document.querySelector('#status').innerHTML = 'getSharingFile';
+      });
+    }
+
+    var beforeView = document.querySelector('#before');
+    var afterView = document.querySelector('#after');
+    var imgPreview = document.querySelector('#imgPreview');
+    var shareFileName = null;
+    var shareFileData = null;
+
+    document.querySelector('#file').addEventListener('change', e => {
+      shareFile = null;
+
+      const target = e.currentTarget;
+      const file = target.files[0];
+
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = function () {
+        shareFileName = file.name.replace(/.(png|jpg|jpeg|gif)$/i, '');
+        shareFileData = reader.result;
+        imgPreview.setAttribute('src', shareFileData);
+        imgPreview.style.display = 'block';
+      };
+      reader.onerror = function (error) {
+        console.log('Error: ', error);
+        shareFileName = null;
+        shareFileData = null;
+        imgPreview.setAttribute('src', '#none');
+        imgPreview.style.display = 'none';
+        beforeView.style.display = 'block';
+        afterView.style.display = 'none';
+      };
+    });
+
+    document.querySelector('#start').addEventListener('click', _ => {
+      if (!shareFileData) {
+        alert('공유할 파일을 선택하세요.');
+        return;
+      }
+      startSharing();
+      beforeView.style.display = 'none';
+      afterView.style.display = 'block';
+    });
+
+    // socket.on('time', function(timeString) {
+    //   var li = document.createElement('li');
+    //   li.innerHTML = timeString;
+    //   document.querySelector('#pings').appendChild(li);
+    // });
+  </script>
+  <!-- 
+  <script>
+    var host = location.origin.replace(/^http/, 'ws')
+    var ws = new WebSocket(host);
+    console.log('ws', ws);
+    ws.onmessage = function (event) {
+      var li = document.createElement('li');
+      li.innerHTML = JSON.parse(event.data);
+      document.querySelector('#pings').appendChild(li);
+    };
+  </script>
+  -->
+</body>
+</html>
