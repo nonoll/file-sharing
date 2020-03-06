@@ -72,7 +72,8 @@
       var role = 'downloader';
       var token = queryString.token;
       var query = { token, role };
-      var socket = io('http://localhost:5000', { path: '/test', query });
+      const { protocol, host } = location;
+      var socket = io(`${protocol}//${host}`, { path: '/file-share', query });
       var el;
 
       document.querySelector('#token').innerHTML = token;

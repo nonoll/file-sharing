@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>file-sharing</title>
+  <title>file-sharing provider</title>
   <style>
     body {
       font-family: "Helvetica Neue", helvetica, arial;
@@ -41,7 +41,8 @@
       var role = 'provider';
       var token = uuid();
       var query = { token, role };
-      var socket = io('http://localhost:5000', { path: '/test', query });
+      const { protocol, host } = location;
+      var socket = io(`${protocol}//${host}`, { path: '/file-share', query });
       var el;
 
       new ClipboardJS('.btn', {

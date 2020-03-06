@@ -3,9 +3,9 @@ var WebSocketServer = require('ws').Server;
 var http = require('http');
 var express = require('express');
 var app = express();
-var port = process.env.PORT || 5000;
+var port = process.env.PORT || 8080;
 
-app.use(express.static(__dirname + '/'));
+app.use(express.static(__dirname + '/public/'));
 
 var server = http.createServer(app);
 server.listen(port);
@@ -38,7 +38,7 @@ var onlineUsers = function() {
 };
 
 const io = require('socket.io')(server, {
-  path: '/test',
+  path: '/file-share',
   serveClient: false,
   // below are engine.IO options
   pingInterval: 10000,
